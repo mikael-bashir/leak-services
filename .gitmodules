@@ -1,0 +1,18 @@
+[submodule "leak-i"]
+	path = leak-i
+	url = https://github.com/mikael-bashir/leak-i.git
+[submodule "leak-ii"]
+	path = leak-ii
+	url = https://github.com/mikael-bashir/leak-ii.git
+[submodule "leak-iv"]
+	path = leak-iv
+	url = https://github.com/mikael-bashir/leak-iv.git
+[submodule "leak-xi"]
+	path = leak-xi
+	url = https://github.com/mikael-bashir/leak-xi.git
+[submodule "leak-xii"]
+	path = leak-xii
+	url = https://github.com/mikael-bashir/leak-xii.git
+[submodule "leak-xiv"]
+	path = leak-xiv
+	url = https://github.com/mikael-bashir/leak-xiv.git
