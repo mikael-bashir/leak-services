@@ -1,3 +1,5 @@
+<p align="center"><img src="logo.png" alt="Leak" width="180"></p>
+
 # Leak Services
 
 The **6 remote MCP verification services** behind [Leak](https://github.com/mikael-bashir/nextjs-ai-chatbot), the agentic Lean 4 theorem-proving stack that powers [competemath.com](https://www.competemath.com).
