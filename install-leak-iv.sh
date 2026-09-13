@@ -105,12 +105,12 @@ DOCKER_BUILDKIT=1 docker build --pull --progress=plain -t "$IMAGE" "$work/leak-i
     if (d != "") { printf "    step %s  %s\n", step, d; fflush(); started[id] = 1 }
     next
   }
-  /^#[0-9]+ (exporting to image|exporting layers)/ { id = $1; sub(/^#/, "", id); if (!(id in started)) { printf "    saving the image to Docker (~15 GB)\n"; fflush(); started[id] = 1 } next }
-  /^#[0-9]+ DONE [0-9.]+s/ { id = $1; sub(/^#/, "", id); if (id in started) { printf "             done in %s\n", $3; fflush() } next }
+  /^#[0-9]+ (exporting to image|exporting layers)/ { id = $1; sub(/^#/, "", id); if (!(id in started)) { printf "    last build step  saving the image to Docker (~15 GB, 2-5 min) — the container is started right after this\n"; fflush(); started[id] = 1; saving[id] = 1 } next }
+  /^#[0-9]+ DONE [0-9.]+s/ { id = $1; sub(/^#/, "", id); if (id in saving) { printf "             image saved in %s\n", $3; fflush() } else if (id in started) { printf "             done in %s\n", $3; fflush() } next }
   /^#[0-9]+ ERROR/ { printf "    \033[1;31mfailed:\033[0m %s\n", $0; fflush(); next }
   /fetching cache-|unpacked cache-|no published cache|tree pinned to cache commit/ { line = $0; sub(/^#[0-9]+ [0-9.]+ /, "", line); printf "             %s\n", line; fflush(); next }
 '
-note "image ready: $(docker images "$IMAGE" --format '{{.Size}}')"
+note "image built and saved: $(docker images "$IMAGE" --format '{{.Size}}') — two short steps left"
 
 say "4/5  Starting the container $NAME on http://127.0.0.1:$PORT"
 docker rm -f "$NAME" >/dev/null 2>&1 || true
