@@ -39,16 +39,17 @@ cat <<EOF
       from $REPO (branch $REF):
         - Ubuntu 22.04 base, build tools, Python
         - the Lean 4 toolchain the Tengoku tree pins (installed by elan)
-        - the Tengoku tree's source from $TREE
-          and its prebuilt cache: ~2 GB downloaded from that repository's
-          GitHub releases, ~11 GB once unpacked — this is what makes the
-          install take minutes instead of hours
+        - the Tengoku tree's source from $TREE, pinned to the commit
+          of its newest published build cache, and that cache: ~2 GB
+          downloaded from the repository's GitHub releases, ~11 GB once
+          unpacked. Nothing is compiled — the cache covers the tree exactly.
    2. Start a container "$NAME" listening on http://127.0.0.1:$PORT
       (reachable only from this machine).
 
   Nothing is installed outside Docker. A temporary clone under ${TMPDIR:-/tmp}
-  is removed when this finishes. Typical time with the cache: 8–15 minutes.
-  Full build log: $LOG
+  is removed when this finishes.
+
+  Expect about 10 minutes end to end (mostly downloads). Full build log: $LOG
 
   Undo everything later:  docker rm -f $NAME && docker rmi $IMAGE
 
@@ -91,8 +92,8 @@ DOCKER_BUILDKIT=1 docker build --pull --progress=plain -t "$IMAGE" "$work/leak-i
     if (cmd ~ /uv venv/)                           return "creating the server'"'"'s Python environment"
     if (cmd ~ /uv pip install/)                    return "installing the MCP server'"'"'s Python packages"
     if (cmd ~ /git clone/ && cmd ~ /tengoku/)      return "cloning the Tengoku tree source (history only, contents on demand) from github.com/competemath/tengoku — ~1-2 min"
-    if (cmd ~ /cache\.sh get/)                     return "downloading the tree'"'"'s prebuilt cache (~2 GB) from its GitHub releases and unpacking it (~11 GB) — ~3-5 min, the step that saves hours"
-    if (cmd ~ /lake build/)                        return "checking the cache against the tree: Lake rebuilds only what changed since the cache (also installs the pinned Lean toolchain) — ~1-3 min"
+    if (cmd ~ /cache\.sh get/)                     return "pinning the tree to its newest cache commit, then downloading that cache (~2 GB) from GitHub releases and unpacking it (~11 GB) — ~3-5 min"
+    if (cmd ~ /lake build/)                        return "verifying the cache: a replay only, nothing compiles (this also installs the pinned Lean toolchain) — ~1-2 min"
     if (cmd ~ /virtual_sandbox/)                   return ""
     return cmd
   }
@@ -107,7 +108,7 @@ DOCKER_BUILDKIT=1 docker build --pull --progress=plain -t "$IMAGE" "$work/leak-i
   /^#[0-9]+ (exporting to image|exporting layers)/ { id = $1; sub(/^#/, "", id); if (!(id in started)) { printf "    saving the image to Docker (~15 GB)\n"; fflush(); started[id] = 1 } next }
   /^#[0-9]+ DONE [0-9.]+s/ { id = $1; sub(/^#/, "", id); if (id in started) { printf "             done in %s\n", $3; fflush() } next }
   /^#[0-9]+ ERROR/ { printf "    \033[1;31mfailed:\033[0m %s\n", $0; fflush(); next }
-  /fetching cache-|unpacked cache-|no published cache/ { line = $0; sub(/^#[0-9]+ [0-9.]+ /, "", line); printf "             %s\n", line; fflush(); next }
+  /fetching cache-|unpacked cache-|no published cache|tree pinned to cache commit/ { line = $0; sub(/^#[0-9]+ [0-9.]+ /, "", line); printf "             %s\n", line; fflush(); next }
 '
 note "image ready: $(docker images "$IMAGE" --format '{{.Size}}')"
 
