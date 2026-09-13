@@ -82,7 +82,9 @@ note "$(git -C "$work/leak-iv" rev-parse --short HEAD) — $work/leak-iv (delete
 say "3/5  Building $IMAGE — each step below is one layer of the image"
 note "(full output is in $LOG; only the milestones are shown here)"
 : > "$LOG"
-DOCKER_BUILDKIT=1 docker build --pull --progress=plain -t "$IMAGE" "$work/leak-iv" 2>&1 | tee -a "$LOG" | awk '
+# TENGOKU_REFRESH busts Docker's layer cache at the tree clone, so a re-run
+# re-pins to the newest cache instead of reusing an older cached clone.
+DOCKER_BUILDKIT=1 docker build --pull --progress=plain --build-arg "TENGOKU_REFRESH=$(date +%s)" -t "$IMAGE" "$work/leak-iv" 2>&1 | tee -a "$LOG" | awk '
   function describe(cmd) {
     if (cmd ~ /apt-get install/ && cmd ~ /zstd/)   return "installing zstd + gh (to fetch and unpack the tree cache)"
     if (cmd ~ /apt-get install/)                   return "installing system packages (curl, git, build tools, Python)"
@@ -136,6 +138,7 @@ cat <<EOF
     stop / start:   docker stop ${NAME}   ·   docker start ${NAME}
     logs:           docker logs -f ${NAME}
     remove it all:  docker rm -f ${NAME} && docker rmi ${IMAGE}
-    update later:   call its tengoku_sync tool from the site, or re-run this installer
+    update later:   call its tengoku_sync tool from the site (moves the tree to the newest
+                    published cache in place), or re-run this installer (rebuilds the image)
 
 EOF
