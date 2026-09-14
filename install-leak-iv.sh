@@ -86,7 +86,7 @@ note "(full output is in $LOG; only the milestones are shown here)"
 # re-pins to the newest cache instead of reusing an older cached clone.
 DOCKER_BUILDKIT=1 docker build --pull --progress=plain --build-arg "TENGOKU_REFRESH=$(date +%s)" -t "$IMAGE" "$work/leak-iv" 2>&1 | tee -a "$LOG" | awk '
   function describe(cmd) {
-    if (cmd ~ /apt-get install/ && cmd ~ /zstd/)   return "installing zstd + gh (to fetch and unpack the tree cache)"
+    if (cmd ~ /apt-get install/ && cmd ~ /zstd/)   return "installing zstd (to unpack the tree cache)"
     if (cmd ~ /apt-get install/)                   return "installing system packages (curl, git, build tools, Python)"
     if (cmd ~ /elan-init/)                         return "installing elan, the Lean toolchain manager"
     if (cmd ~ /astral\.sh\/uv/)                    return "installing uv (Python package manager)"
@@ -94,8 +94,9 @@ DOCKER_BUILDKIT=1 docker build --pull --progress=plain --build-arg "TENGOKU_REFR
     if (cmd ~ /uv venv/)                           return "creating the server'"'"'s Python environment"
     if (cmd ~ /uv pip install/)                    return "installing the MCP server'"'"'s Python packages"
     if (cmd ~ /git clone/ && cmd ~ /tengoku/)      return "cloning the Tengoku tree source (history only, contents on demand) from github.com/competemath/tengoku — ~1-2 min"
-    if (cmd ~ /cache\.sh get/)                     return "pinning the tree to its newest cache commit, then downloading that cache (~2 GB) from GitHub releases and unpacking it (~11 GB) — ~3-5 min"
-    if (cmd ~ /lake build/)                        return "verifying the cache: a replay only, nothing compiles (this also installs the pinned Lean toolchain) — ~1-2 min"
+    if (cmd ~ /pin\.sh/)                           return "pinning the tree to its newest cache commit, downloading that cache (~2 GB) from GitHub releases, unpacking it (~11 GB), then a replay build that compiles nothing (this also installs the pinned Lean toolchain) — ~5-7 min"
+    if (cmd ~ /cache\.sh get/)                     return "downloading the tree cache (~2 GB) and unpacking it (~11 GB) — ~3-5 min"
+    if (cmd ~ /lake build/)                        return "verifying the cache: a replay only, nothing compiles — ~1-2 min"
     if (cmd ~ /virtual_sandbox/)                   return ""
     return cmd
   }
@@ -110,7 +111,7 @@ DOCKER_BUILDKIT=1 docker build --pull --progress=plain --build-arg "TENGOKU_REFR
   /^#[0-9]+ (exporting to image|exporting layers)/ { id = $1; sub(/^#/, "", id); if (!(id in started)) { printf "    last build step  saving the image to Docker (~15 GB, 2-5 min) — the container is started right after this\n"; fflush(); started[id] = 1; saving[id] = 1 } next }
   /^#[0-9]+ DONE [0-9.]+s/ { id = $1; sub(/^#/, "", id); if (id in saving) { printf "             image saved in %s\n", $3; fflush() } else if (id in started) { printf "             done in %s\n", $3; fflush() } next }
   /^#[0-9]+ ERROR/ { printf "    \033[1;31mfailed:\033[0m %s\n", $0; fflush(); next }
-  /fetching cache-|unpacked cache-|no published cache|tree pinned to cache commit/ { line = $0; sub(/^#[0-9]+ [0-9.]+ /, "", line); printf "             %s\n", line; fflush(); next }
+  /fetching cache-|unpacked cache-|no published cache|pinning the tree to|pinned to [0-9a-f]|already pinned/ { line = $0; sub(/^#[0-9]+ [0-9.]+ /, "", line); printf "             %s\n", line; fflush(); next }
 '
 note "image built and saved: $(docker images "$IMAGE" --format '{{.Size}}') — two short steps left"
 
